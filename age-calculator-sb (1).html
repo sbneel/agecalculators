@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Age Calculator SB</title>
+
+<!-- Telegram WebApp -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ⚙️ REPLACE with your Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyDxQNgrtk1W58rziO5lXeAPINA_lbSyAp0",
+    authDomain: "agecalculator-da458.firebaseapp.com",
+    projectId: "agecalculator-da458",
+    storageBucket: "agecalculator-da458.firebasestorage.app",
+    messagingSenderId: "339321384454",
+    appId: "1:339321384454:web:6e23220f0fd2504517dd87"
+     measurementId: "G-CFPJ8RRRK4"
+  };
+  
+
+  let db = null;
+  let firestoreReady = false;
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    firestoreReady = true;
+    window.__db = db;
+    window.__fsReady = true;
+    window.__fsModules = { collection, addDoc, onSnapshot, query, orderBy, limit };
+    document.getElementById('firebase-status').innerHTML = '<span class="status-dot green"></span><span>Connected</span>';
+    loadHistory();
+  } catch(e) {
+    window.__fsReady = false;
+    document.getElementById('firebase-status').innerHTML = '<span class="status-dot red"></span><span>Offline</span>';
+  }
+
+  window.saveToFirestore = async function(data) {
+    if (!window.__fsReady || !window.__db) return;
+    try {
+      const { collection, addDoc } = window.__fsModules;
+      await addDoc(collection(window.__db, "age_history"), {
+        ...data,
+        createdAt: new Date().toISOString(),
+        userId: window.__tgUserId || "anonymous"
+      });
+    } catch(e) { console.warn("Firestore save failed:", e); }
+  };
+
+  window.loadHistory = function() {
+    if (!window.__fsReady || !window.__db) return;
+    try {
+      const { collection, onSnapshot, query, orderBy, limit } = window.__fsModules;
+      const q = query(collection(window.__db, "age_history"), orderBy("createdAt", "desc"), limit(20));
+      onSnapshot(q, (snap) => {
+        const items = [];
+        snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+        window.__renderHistory(items);
+      });
+    } catch(e) { console.warn("History load failed:", e); }
+  };
+</script>
+
+<!-- Monetag Ad Script (replace zone ID) -->
+<script src="https://kulroakonsu.net/88/tag.min.js" data-zone="YOUR_MONETAG_ZONE_ID" async></script>
+
+<style>
+/* ===== M3 CSS Variables / Tokens ===== */
+:root {
+  --md-sys-color-primary: #6750A4;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #EADDFF;
+  --md-sys-color-on-primary-container: #21005D;
+  --md-sys-color-secondary: #625B71;
+  --md-sys-color-secondary-container: #E8DEF8;
+  --md-sys-color-tertiary: #7D5260;
+  --md-sys-color-tertiary-container: #FFD8E4;
+  --md-sys-color-surface: #FFFBFE;
+  --md-sys-color-surface-variant: #E7E0EC;
+  --md-sys-color-on-surface: #1C1B1F;
+  --md-sys-color-on-surface-variant: #49454F;
+  --md-sys-color-background: #F6F2FA;
+  --md-sys-color-outline: #79747E;
+  --md-sys-color-error: #B3261E;
+  --md-sys-color-card: #FFFFFF;
+  --md-sys-color-card-shadow: rgba(103,80,164,0.12);
+  --md-sys-shape-corner-medium: 16px;
+  --md-sys-shape-corner-large: 24px;
+  --md-sys-shape-corner-xlarge: 28px;
+  --tg-btn: #6750A4;
+  --gradient-start: #7C3AED;
+  --gradient-end: #A855F7;
+  --live-bg: #F3EEFF;
+  --live-border: #D0B4FF;
+  --ad-bg: #F8F6FF;
+  --ad-border: #E0D6F7;
+  --history-border: #EDE9F4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-sys-color-primary: #D0BCFF;
+    --md-sys-color-on-primary: #381E72;
+    --md-sys-color-primary-container: #4F378B;
+    --md-sys-color-on-primary-container: #EADDFF;
+    --md-sys-color-secondary: #CCC2DC;
+    --md-sys-color-secondary-container: #4A4458;
+    --md-sys-color-surface: #1C1B1F;
+    --md-sys-color-surface-variant: #49454F;
+    --md-sys-color-on-surface: #E6E1E5;
+    --md-sys-color-on-surface-variant: #CAC4D0;
+    --md-sys-color-background: #141218;
+    --md-sys-color-outline: #938F99;
+    --md-sys-color-card: #2B2930;
+    --md-sys-color-card-shadow: rgba(0,0,0,0.35);
+    --tg-btn: #D0BCFF;
+    --gradient-start: #9F7EFA;
+    --gradient-end: #C084FC;
+    --live-bg: #2A2534;
+    --live-border: #5E4A8A;
+    --ad-bg: #24212E;
+    --ad-border: #3D3552;
+    --history-border: #312E3A;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-surface);
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: 40px;
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--md-sys-color-outline); border-radius: 4px; }
+
+/* ===== Layout ===== */
+.container { max-width: 480px; margin: 0 auto; padding: 0 12px; }
+
+/* ===== Card ===== */
+.card {
+  background: var(--md-sys-color-card);
+  border-radius: var(--md-sys-shape-corner-large);
+  box-shadow: 0 2px 16px var(--md-sys-color-card-shadow);
+  padding: 20px;
+  margin-bottom: 14px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  animation: fadeUp 0.4s ease both;
+}
+.card:active { transform: scale(0.99); }
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(16px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+/* ===== Header ===== */
+.app-header {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  color: #fff;
+  padding: 18px 20px 22px;
+  margin-bottom: 0;
+  position: relative;
+  overflow: hidden;
+}
+.app-header::before {
+  content:'';
+  position:absolute; top:-40px; right:-40px;
+  width:160px; height:160px;
+  background:rgba(255,255,255,0.08);
+  border-radius:50%;
+}
+.app-header::after {
+  content:'';
+  position:absolute; bottom:-30px; left:30px;
+  width:100px; height:100px;
+  background:rgba(255,255,255,0.05);
+  border-radius:50%;
+}
+.header-top { display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; }
+.app-title { font-size:20px; font-weight:700; letter-spacing:0.3px; }
+.app-subtitle { font-size:12px; opacity:0.8; margin-top:2px; }
+.lang-toggle {
+  display:flex; gap:4px;
+  background:rgba(255,255,255,0.15);
+  border-radius:20px; padding:3px;
+}
+.lang-btn {
+  padding:4px 10px; border-radius:16px; border:none; cursor:pointer;
+  font-size:12px; font-weight:600; color:#fff; background:transparent;
+  transition: background 0.2s;
+}
+.lang-btn.active { background:rgba(255,255,255,0.3); }
+
+/* ===== Profile Card ===== */
+.profile-card { display:flex; align-items:center; gap:14px; }
+.profile-avatar {
+  width:56px; height:56px; border-radius:50%;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; color:#fff; font-weight:700;
+  overflow:hidden; flex-shrink:0;
+  box-shadow: 0 4px 12px rgba(103,80,164,0.3);
+}
+.profile-avatar img { width:100%; height:100%; object-fit:cover; }
+.profile-info { flex:1; }
+.profile-name { font-size:17px; font-weight:700; color: var(--md-sys-color-on-surface); }
+.profile-id { font-size:12px; color: var(--md-sys-color-on-surface-variant); margin-top:2px; }
+.status-row { display:flex; align-items:center; gap:6px; margin-top:6px; }
+.status-dot {
+  width:8px; height:8px; border-radius:50%; display:inline-block;
+}
+.status-dot.green { background:#4CAF50; box-shadow:0 0 6px #4CAF50; }
+.status-dot.red { background:#F44336; box-shadow:0 0 6px #F44336; }
+#firebase-status { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--md-sys-color-on-surface-variant); }
+
+/* ===== Ad Banner ===== */
+.ad-banner {
+  background: var(--ad-bg);
+  border: 1px solid var(--ad-border);
+  border-radius: var(--md-sys-shape-corner-medium);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  animation: fadeUp 0.4s ease 0.1s both;
+}
+.ad-label { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+.ad-badge {
+  font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-secondary);
+  letter-spacing:0.5px;
+}
+.ad-inner { display:flex; justify-content:center; min-height:60px; align-items:center; }
+
+/* ===== Section Titles ===== */
+.section-title {
+  font-size:13px; font-weight:700; letter-spacing:0.8px;
+  color: var(--md-sys-color-primary);
+  text-transform:uppercase; margin-bottom:10px;
+  display:flex; align-items:center; gap:6px;
+}
+
+/* ===== Form ===== */
+.form-field { margin-bottom:14px; }
+.form-label { font-size:12px; font-weight:600; color:var(--md-sys-color-on-surface-variant); margin-bottom:6px; display:block; }
+.form-input {
+  width:100%; padding:13px 16px; border-radius:12px;
+  border:1.5px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-surface);
+  font-size:15px; outline:none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-input:focus {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 3px rgba(103,80,164,0.15);
+}
+
+/* ===== Button ===== */
+.btn-calculate {
+  width:100%; padding:15px;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  color:#fff; border:none; border-radius:14px; font-size:16px; font-weight:700;
+  cursor:pointer; position:relative; overflow:hidden;
+  box-shadow: 0 4px 16px rgba(103,80,164,0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+  letter-spacing:0.3px;
+}
+.btn-calculate:active { transform:scale(0.97); box-shadow: 0 2px 8px rgba(103,80,164,0.25); }
+.ripple {
+  position:absolute; border-radius:50%; background:rgba(255,255,255,0.3);
+  transform:scale(0); animation:ripple 0.6s linear;
+  pointer-events:none;
+}
+@keyframes ripple {
+  to { transform:scale(4); opacity:0; }
+}
+
+/* ===== Results ===== */
+.result-main {
+  text-align:center; padding:24px 20px 20px;
+}
+.result-age-label { font-size:13px; color:var(--md-sys-color-on-surface-variant); margin-bottom:6px; }
+.result-age-value {
+  font-size:56px; font-weight:800; line-height:1;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.result-age-sub { font-size:16px; color:var(--md-sys-color-on-surface-variant); margin-top:6px; }
+.result-name { font-size:20px; font-weight:700; margin-bottom:4px; }
+
+/* ===== Live Grid ===== */
+.live-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px; }
+.live-card {
+  background: var(--live-bg); border:1.5px solid var(--live-border);
+  border-radius:14px; padding:12px 8px; text-align:center;
+  animation: fadeUp 0.5s ease both;
+}
+.live-card:nth-child(1) { animation-delay:0.05s; }
+.live-card:nth-child(2) { animation-delay:0.1s; }
+.live-card:nth-child(3) { animation-delay:0.15s; }
+.live-value { font-size:20px; font-weight:800; color:var(--md-sys-color-primary); font-variant-numeric:tabular-nums; }
+.live-label { font-size:10px; color:var(--md-sys-color-on-surface-variant); margin-top:3px; text-transform:uppercase; letter-spacing:0.5px; }
+.live-pulse { display:inline-block; width:5px; height:5px; background:#4CAF50; border-radius:50%; margin-left:4px; animation:pulse 1s infinite; vertical-align:middle; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+/* ===== Zodiac ===== */
+.zodiac-card { display:flex; align-items:center; gap:16px; }
+.zodiac-icon { font-size:44px; line-height:1; }
+.zodiac-info { flex:1; }
+.zodiac-name { font-size:20px; font-weight:700; }
+.zodiac-range { font-size:12px; color:var(--md-sys-color-on-surface-variant); margin-top:2px; }
+.zodiac-desc { font-size:13px; color:var(--md-sys-color-on-surface-variant); margin-top:4px; line-height:1.5; }
+
+/* ===== Birthday Countdown ===== */
+.bday-row { display:flex; align-items:center; justify-content:space-between; }
+.bday-date { font-size:14px; color:var(--md-sys-color-on-surface-variant); }
+.bday-countdown {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  color:#fff; border-radius:20px; padding:5px 14px; font-size:13px; font-weight:700;
+}
+
+/* ===== History ===== */
+.history-item {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 0; border-bottom:1px solid var(--history-border);
+  animation: fadeUp 0.3s ease both;
+}
+.history-item:last-child { border-bottom:none; }
+.history-avatar {
+  width:38px; height:38px; border-radius:50%;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; color:#fff; font-weight:700; flex-shrink:0;
+}
+.history-info { flex:1; }
+.history-name { font-size:14px; font-weight:600; }
+.history-meta { font-size:12px; color:var(--md-sys-color-on-surface-variant); margin-top:2px; }
+.history-age {
+  font-size:13px; font-weight:700; color:var(--md-sys-color-primary);
+  background:var(--live-bg); border-radius:10px; padding:3px 10px;
+}
+
+/* ===== Tabs ===== */
+.tab-bar {
+  display:flex; gap:6px; margin-bottom:14px;
+  background: var(--md-sys-color-surface-variant);
+  border-radius:14px; padding:4px;
+  animation: fadeUp 0.35s ease both;
+}
+.tab-btn {
+  flex:1; padding:9px 0; border:none; border-radius:10px; cursor:pointer;
+  font-size:13px; font-weight:600; background:transparent;
+  color:var(--md-sys-color-on-surface-variant); transition:all 0.2s;
+}
+.tab-btn.active {
+  background:var(--md-sys-color-card);
+  color:var(--md-sys-color-primary);
+  box-shadow:0 2px 8px var(--md-sys-color-card-shadow);
+}
+
+/* ===== Section Spacer ===== */
+.section-gap { height: 6px; }
+
+/* ===== Animations ===== */
+.result-section { display:none; }
+.result-section.show {
+  display:block;
+  animation: fadeUp 0.45s ease both;
+}
+
+/* ===== Empty State ===== */
+.empty-state { text-align:center; padding:24px 0; color:var(--md-sys-color-on-surface-variant); font-size:14px; }
+.empty-icon { font-size:36px; margin-bottom:8px; }
+
+/* ===== Bottom Monetag Ad ===== */
+.bottom-ad {
+  margin: 10px 0 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ===== APP HEADER ===== -->
+<div class="app-header">
+  <div class="container">
+    <div class="header-top">
+      <div>
+        <div class="app-title">🎂 Age Calculator SB</div>
+        <div class="app-subtitle" id="hdr-subtitle">Calculate your exact age instantly</div>
+      </div>
+      <div class="lang-toggle">
+        <button class="lang-btn active" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" onclick="setLang('bn')">বাং</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container" style="margin-top:14px;">
+
+  <!-- ===== PROFILE CARD ===== -->
+  <div class="card" style="animation-delay:0.05s;">
+    <div class="profile-card">
+      <div class="profile-avatar" id="user-avatar">👤</div>
+      <div class="profile-info">
+        <div class="profile-name" id="user-name">Loading...</div>
+        <div class="profile-id" id="user-id">ID: —</div>
+        <div class="status-row">
+          <div id="firebase-status">
+            <span class="status-dot red"></span><span>Connecting...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AD BANNER (Adsterra) ===== -->
+  <div class="ad-banner">
+    <div class="ad-label">
+      <span class="ad-badge">SPONSORED</span>
+      <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">Ad</span>
+    </div>
+    <div class="ad-inner" id="adsterra-ad">
+      <!-- Adsterra Banner — replace YOUR_ADSTERRA_KEY -->
+      <script>
+        window._adsterraOptions = {
+          key: 'YOUR_ADSTERRA_KEY',
+          format: 'iframe',
+          height: 60,
+          width: 300,
+          params: {}
+        };
+      </script>
+      <!-- Delayed load for Telegram safety -->
+      <div id="adsterra-placeholder" style="font-size:12px;color:var(--md-sys-color-on-surface-variant);opacity:0.5;">Advertisement</div>
+    </div>
+  </div>
+
+  <!-- ===== TABS ===== -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-calc" onclick="switchTab('calc')" data-en="Calculator" data-bn="ক্যালকুলেটর">Calculator</button>
+    <button class="tab-btn" id="tab-history" onclick="switchTab('history')" data-en="History" data-bn="ইতিহাস">History</button>
+  </div>
+
+  <!-- ===== CALCULATOR TAB ===== -->
+  <div id="tab-calc-content">
+
+    <!-- Calculator Form -->
+    <div class="card" style="animation-delay:0.1s;">
+      <div class="section-title">✨ <span data-en="Enter Details" data-bn="তথ্য দিন">Enter Details</span></div>
+
+      <div class="form-field">
+        <label class="form-label" data-en="Full Name" data-bn="পুরো নাম">Full Name</label>
+        <input class="form-input" type="text" id="input-name" placeholder="e.g. Sabbir Ahmed" autocomplete="off"/>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" data-en="Date of Birth" data-bn="জন্ম তারিখ">Date of Birth</label>
+        <input class="form-input" type="date" id="input-dob"/>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" data-en="Time of Birth (optional)" data-bn="জন্ম সময় (ঐচ্ছিক)">Time of Birth (optional)</label>
+        <input class="form-input" type="time" id="input-time"/>
+      </div>
+
+      <button class="btn-calculate" id="calc-btn" onclick="calculateAge(event)">
+        <span data-en="🎯 Calculate My Age" data-bn="🎯 আমার বয়স গণনা করুন">🎯 Calculate My Age</span>
+      </button>
+    </div>
+
+    <!-- Results Section -->
+    <div id="result-section" class="result-section">
+
+      <!-- Main Age Card -->
+      <div class="card result-main">
+        <div class="result-name" id="result-name"></div>
+        <div class="result-age-label" data-en="Your Age" data-bn="আপনার বয়স">Your Age</div>
+        <div class="result-age-value" id="result-years">—</div>
+        <div class="result-age-sub" id="result-sub">years old</div>
+        <div style="margin-top:14px;font-size:14px;color:var(--md-sys-color-on-surface-variant);" id="result-months-days"></div>
+      </div>
+
+      <!-- Live Counters -->
+      <div class="card" style="padding-bottom:16px;">
+        <div class="section-title">⚡ <span data-en="Live Counters" data-bn="লাইভ কাউন্টার">Live Counters</span> <span class="live-pulse"></span></div>
+        <div class="live-grid">
+          <div class="live-card">
+            <div class="live-value" id="live-hours">—</div>
+            <div class="live-label" data-en="Hours" data-bn="ঘণ্টা">Hours</div>
+          </div>
+          <div class="live-card">
+            <div class="live-value" id="live-minutes">—</div>
+            <div class="live-label" data-en="Minutes" data-bn="মিনিট">Minutes</div>
+          </div>
+          <div class="live-card">
+            <div class="live-value" id="live-seconds">—</div>
+            <div class="live-label" data-en="Seconds" data-bn="সেকেন্ড">Seconds</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zodiac Card -->
+      <div class="card" id="zodiac-card">
+        <div class="section-title">♈ <span data-en="Zodiac Sign" data-bn="রাশিফল">Zodiac Sign</span></div>
+        <div class="zodiac-card">
+          <div class="zodiac-icon" id="zodiac-icon">—</div>
+          <div class="zodiac-info">
+            <div class="zodiac-name" id="zodiac-name">—</div>
+            <div class="zodiac-range" id="zodiac-range">—</div>
+            <div class="zodiac-desc" id="zodiac-desc">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Birthday Countdown -->
+      <div class="card">
+        <div class="section-title">🎉 <span data-en="Next Birthday" data-bn="পরবর্তী জন্মদিন">Next Birthday</span></div>
+        <div class="bday-row">
+          <div>
+            <div style="font-size:15px;font-weight:600;" id="bday-date-str">—</div>
+            <div class="bday-date" id="bday-weekday">—</div>
+          </div>
+          <div class="bday-countdown" id="bday-countdown">— days</div>
+        </div>
+      </div>
+
+      <!-- Monetag Bottom Ad -->
+      <div class="ad-banner bottom-ad">
+        <div class="ad-label">
+          <span class="ad-badge">AD</span>
+        </div>
+        <div class="ad-inner">
+          <div id="monetag-ad" style="min-height:60px;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);opacity:0.5;">Advertisement</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /result-section -->
+
+  </div><!-- /tab-calc-content -->
+
+  <!-- ===== HISTORY TAB ===== -->
+  <div id="tab-history-content" style="display:none;">
+    <div class="card">
+      <div class="section-title">📜 <span data-en="Recent Calculations" data-bn="সাম্প্রতিক গণনা">Recent Calculations</span></div>
+      <div id="history-list">
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div data-en="No history yet. Calculate an age to see it here!" data-bn="এখনও কোনো ইতিহাস নেই।">No history yet. Calculate an age to see it here!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ===== Telegram WebApp Init =====
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.expand();
+  tg.ready();
+  const user = tg.initDataUnsafe?.user;
+  if (user) {
+    window.__tgUserId = user.id;
+    document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+    document.getElementById('user-id').textContent = 'ID: ' + user.id;
+    const av = document.getElementById('user-avatar');
+    if (user.photo_url) {
+      av.innerHTML = `<img src="${user.photo_url}" alt="avatar"/>`;
+    } else {
+      av.textContent = (user.first_name || 'U')[0].toUpperCase();
+    }
+    // Apply Telegram theme colors
+    const btnColor = getComputedStyle(document.documentElement).getPropertyValue('--tg-theme-button-color').trim();
+    if (btnColor) {
+      document.documentElement.style.setProperty('--gradient-start', btnColor);
+      document.documentElement.style.setProperty('--md-sys-color-primary', btnColor);
+    }
+  }
+} else {
+  document.getElementById('user-name').textContent = 'Demo User';
+  document.getElementById('user-id').textContent = 'ID: 0000000';
+  document.getElementById('user-avatar').textContent = 'D';
+}
+
+// ===== Language System =====
+let currentLang = 'en';
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('[data-en]').forEach(el => {
+    el.textContent = el.dataset[lang] || el.dataset.en;
+  });
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.trim() === (lang === 'en' ? 'EN' : 'বাং'));
+  });
+  document.getElementById('hdr-subtitle').textContent =
+    lang === 'en' ? 'Calculate your exact age instantly' : 'তাৎক্ষণিকভাবে আপনার সঠিক বয়স গণনা করুন';
+  document.getElementById('input-name').placeholder = lang === 'en' ? 'e.g. Sabbir Ahmed' : 'যেমন: সাব্বির আহমেদ';
+}
+
+// ===== Tab Switching =====
+function switchTab(tab) {
+  ['calc','history'].forEach(t => {
+    document.getElementById(`tab-${t}-content`).style.display = t === tab ? '' : 'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
+}
+
+// ===== Ripple Effect =====
+document.getElementById('calc-btn').addEventListener('click', function(e) {
+  const btn = this;
+  const circle = document.createElement('span');
+  const diameter = Math.max(btn.clientWidth, btn.clientHeight);
+  const radius = diameter / 2;
+  const rect = btn.getBoundingClientRect();
+  circle.classList.add('ripple');
+  circle.style.width = circle.style.height = `${diameter}px`;
+  circle.style.left = `${e.clientX - rect.left - radius}px`;
+  circle.style.top = `${e.clientY - rect.top - radius}px`;
+  const existing = btn.querySelector('.ripple');
+  if (existing) existing.remove();
+  btn.appendChild(circle);
+});
+
+// ===== Zodiac Data =====
+const ZODIAC = [
+  { name:'Capricorn', nameBn:'মকর', emoji:'♑', start:[12,22], end:[1,19], desc:'Disciplined, responsible, ambitious', descBn:'শৃঙ্খলাবদ্ধ, দায়িত্বশীল, উচ্চাকাঙ্ক্ষী' },
+  { name:'Aquarius', nameBn:'কুম্ভ', emoji:'♒', start:[1,20], end:[2,18], desc:'Innovative, independent, humanitarian', descBn:'উদ্ভাবনী, স্বাধীন, মানবতাবাদী' },
+  { name:'Pisces', nameBn:'মীন', emoji:'♓', start:[2,19], end:[3,20], desc:'Empathetic, artistic, intuitive', descBn:'সহানুভূতিশীল, শৈল্পিক, স্বজ্ঞাত' },
+  { name:'Aries', nameBn:'মেষ', emoji:'♈', start:[3,21], end:[4,19], desc:'Bold, ambitious, confident', descBn:'সাহসী, উচ্চাকাঙ্ক্ষী, আত্মবিশ্বাসী' },
+  { name:'Taurus', nameBn:'বৃষ', emoji:'♉', start:[4,20], end:[5,20], desc:'Reliable, patient, practical', descBn:'নির্ভরযোগ্য, ধৈর্যশীল, ব্যবহারিক' },
+  { name:'Gemini', nameBn:'মিথুন', emoji:'♊', start:[5,21], end:[6,20], desc:'Curious, adaptable, witty', descBn:'কৌতূহলী, অভিযোজিত, রসিক' },
+  { name:'Cancer', nameBn:'কর্কট', emoji:'♋', start:[6,21], end:[7,22], desc:'Nurturing, protective, empathetic', descBn:'লালনপালনকারী, সুরক্ষামূলক, সহানুভূতিশীল' },
+  { name:'Leo', nameBn:'সিংহ', emoji:'♌', start:[7,23], end:[8,22], desc:'Creative, passionate, generous', descBn:'সৃজনশীল, আবেগময়, উদার' },
+  { name:'Virgo', nameBn:'কন্যা', emoji:'♍', start:[8,23], end:[9,22], desc:'Analytical, kind, hardworking', descBn:'বিশ্লেষণাত্মক, দয়ালু, পরিশ্রমী' },
+  { name:'Libra', nameBn:'তুলা', emoji:'♎', start:[9,23], end:[10,22], desc:'Diplomatic, fair, social', descBn:'কূটনীতিক, ন্যায্য, সামাজিক' },
+  { name:'Scorpio', nameBn:'বৃশ্চিক', emoji:'♏', start:[10,23], end:[11,21], desc:'Brave, passionate, resourceful', descBn:'সাহসী, আবেগময়, সম্পদশালী' },
+  { name:'Sagittarius', nameBn:'ধনু', emoji:'♐', start:[11,22], end:[12,21], desc:'Optimistic, adventurous, honest', descBn:'আশাবাদী, দুঃসাহসিক, সৎ' },
+];
+
+function getZodiac(month, day) {
+  for (const z of ZODIAC) {
+    const [sm, sd] = z.start, [em, ed] = z.end;
+    if ((month === sm && day >= sd) || (month === em && day <= ed)) return z;
+  }
+  return ZODIAC[0];
+}
+
+// ===== Live Counter =====
+let liveInterval = null;
+let birthDateObj = null;
+
+function startLiveCounter() {
+  if (liveInterval) clearInterval(liveInterval);
+  if (!birthDateObj) return;
+  function tick() {
+    const now = new Date();
+    const diff = now - birthDateObj;
+    const totalSeconds = Math.floor(diff / 1000);
+    const totalMinutes = Math.floor(diff / 60000);
+    const totalHours = Math.floor(diff / 3600000);
+    document.getElementById('live-hours').textContent = totalHours.toLocaleString();
+    document.getElementById('live-minutes').textContent = totalMinutes.toLocaleString();
+    document.getElementById('live-seconds').textContent = totalSeconds.toLocaleString();
+  }
+  tick();
+  liveInterval = setInterval(tick, 1000);
+}
+
+// ===== Main Calculate Function =====
+function calculateAge(e) {
+  const name = document.getElementById('input-name').value.trim() || (currentLang === 'en' ? 'You' : 'আপনি');
+  const dobVal = document.getElementById('input-dob').value;
+  const timeVal = document.getElementById('input-time').value;
+
+  if (!dobVal) {
+    alert(currentLang === 'en' ? 'Please enter your date of birth!' : 'অনুগ্রহ করে জন্ম তারিখ দিন!');
+    return;
+  }
+
+  const [y, m, d] = dobVal.split('-').map(Number);
+  const [hr, min] = timeVal ? timeVal.split(':').map(Number) : [0, 0];
+  birthDateObj = new Date(y, m - 1, d, hr, min, 0);
+  const now = new Date();
+
+  if (birthDateObj > now) {
+    alert(currentLang === 'en' ? 'Date of birth cannot be in the future!' : 'জন্ম তারিখ ভবিষ্যতে হতে পারে না!');
+    return;
+  }
+
+  // Age calculation
+  let years = now.getFullYear() - y;
+  let months = now.getMonth() - (m - 1);
+  let days = now.getDate() - d;
+  if (days < 0) { months--; days += new Date(now.getFullYear(), now.getMonth(), 0).getDate(); }
+  if (months < 0) { years--; months += 12; }
+
+  // Zodiac
+  const zodiac = getZodiac(m, d);
+
+  // Next birthday
+  let nextBday = new Date(now.getFullYear(), m - 1, d);
+  if (nextBday <= now) nextBday.setFullYear(nextBday.getFullYear() + 1);
+  const daysUntil = Math.ceil((nextBday - now) / 86400000);
+  const bdayOptions = { month: 'long', day: 'numeric' };
+  const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const weekdaysBn = ['রবিবার','সোমবার','মঙ্গলবার','বুধবার','বৃহস্পতিবার','শুক্রবার','শনিবার'];
+
+  // Update UI
+  document.getElementById('result-name').textContent = name;
+  document.getElementById('result-years').textContent = years;
+  document.getElementById('result-sub').textContent = currentLang === 'en' ? 'years old' : 'বছর বয়সী';
+  document.getElementById('result-months-days').textContent =
+    currentLang === 'en'
+      ? `${months} months, ${days} days`
+      : `${months} মাস, ${days} দিন`;
+
+  document.getElementById('zodiac-icon').textContent = zodiac.emoji;
+  document.getElementById('zodiac-name').textContent = currentLang === 'en' ? zodiac.name : zodiac.nameBn;
+  document.getElementById('zodiac-range').textContent =
+    `${new Date(2000, zodiac.start[0]-1, zodiac.start[1]).toLocaleString('default',{month:'short'})} ${zodiac.start[1]} – `+
+    `${new Date(2000, zodiac.end[0]-1, zodiac.end[1]).toLocaleString('default',{month:'short'})} ${zodiac.end[1]}`;
+  document.getElementById('zodiac-desc').textContent = currentLang === 'en' ? zodiac.desc : zodiac.descBn;
+
+  document.getElementById('bday-date-str').textContent =
+    nextBday.toLocaleDateString(currentLang === 'en' ? 'en-US' : 'bn-BD', bdayOptions);
+  document.getElementById('bday-weekday').textContent =
+    currentLang === 'en' ? weekdays[nextBday.getDay()] : weekdaysBn[nextBday.getDay()];
+  document.getElementById('bday-countdown').textContent =
+    currentLang === 'en' ? `${daysUntil} days` : `${daysUntil} দিন`;
+
+  // Show results
+  document.getElementById('result-section').classList.add('show');
+
+  // Start live counter
+  startLiveCounter();
+
+  // Save to Firestore
+  const record = {
+    name, dob: dobVal,
+    years, months, days,
+    zodiac: zodiac.name,
+    zodiacEmoji: zodiac.emoji,
+    nextBirthday: nextBday.toISOString().split('T')[0],
+    daysUntilBirthday: daysUntil
+  };
+  if (window.saveToFirestore) window.saveToFirestore(record);
+
+  // Scroll to results
+  setTimeout(() => {
+    document.getElementById('result-section').scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 200);
+}
+
+// ===== History Renderer =====
+window.__renderHistory = function(items) {
+  const list = document.getElementById('history-list');
+  if (!items || items.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div>No history yet.</div></div>`;
+    return;
+  }
+  list.innerHTML = items.map((item, i) => `
+    <div class="history-item" style="animation-delay:${i*0.05}s;">
+      <div class="history-avatar">${item.zodiacEmoji || item.name?.[0]?.toUpperCase() || '?'}</div>
+      <div class="history-info">
+        <div class="history-name">${item.name || '—'}</div>
+        <div class="history-meta">${item.dob || ''} · ${item.zodiac || ''}</div>
+      </div>
+      <div class="history-age">${item.years}y</div>
+    </div>
+  `).join('');
+};
+
+// ===== Ad Loaders (Delayed for Telegram Safety) =====
+function loadMonetagAd() {
+  if (window.show_88) {
+    try {
+      show_88({ zone: 'YOUR_MONETAG_ZONE_ID', container: 'monetag-ad' });
+    } catch(e) {}
+  }
+}
+
+function loadAdsterraAd() {
+  // Only inject if key is set
+  const key = 'YOUR_ADSTERRA_KEY';
+  if (key && key !== 'YOUR_ADSTERRA_KEY') {
+    const container = document.getElementById('adsterra-ad');
+    container.innerHTML = '';
+    const s1 = document.createElement('script');
+    s1.text = `atOptions={'key':'${key}','format':'iframe','height':60,'width':300,'params':{}};`;
+    const s2 = document.createElement('script');
+    s2.src = `//www.topcreativeformat.com/${key}/invoke.js`;
+    s2.async = true;
+    container.appendChild(s1);
+    container.appendChild(s2);
+  }
+}
+
+// Delay both ads by 1.5s for Telegram browser compatibility
+setTimeout(() => {
+  loadMonetagAd();
+  loadAdsterraAd();
+}, 1500);
+
+// ===== Set max date to today =====
+document.getElementById('input-dob').max = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
