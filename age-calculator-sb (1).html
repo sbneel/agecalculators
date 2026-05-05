@@ -14,15 +14,17 @@
   import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   // ⚙️ REPLACE with your Firebase config
-  const firebaseConfig = {
+    const firebaseConfig = {
     apiKey: "AIzaSyDxQNgrtk1W58rziO5lXeAPINA_lbSyAp0",
     authDomain: "agecalculator-da458.firebaseapp.com",
     projectId: "agecalculator-da458",
     storageBucket: "agecalculator-da458.firebasestorage.app",
     messagingSenderId: "339321384454",
-    appId: "1:339321384454:web:6e23220f0fd2504517dd87"
-     measurementId: "G-CFPJ8RRRK4"
+    appId: "1:339321384454:web:6e23220f0fd2504517dd87", // ঠিক করা হয়েছে
+    measurementId: "G-CFPJ8RRRK4"
   };
+
+  
   
 
   let db = null;
